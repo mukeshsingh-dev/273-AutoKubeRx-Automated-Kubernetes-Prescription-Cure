@@ -1,0 +1,67 @@
+apiVersion: ops.example.com/v1alpha1
+kind: SelfHealingWorkload
+metadata:
+  name: worker-demo
+  namespace: self-healing-demo
+spec:
+  replicas: 3
+  image: nginx:1.27
+  port: 80
+  retryPolicy:
+    maxRetries: 3
+    backoffSeconds: 30
+  agentPolicy:
+    allowReadOnlyEvidence: true
+    requireApprovalForRecovery: true
+---
+# Phase 2 reference Deployment. The controller will reconcile this shape.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-demo
+  namespace: self-healing-demo
+  labels:
+    app.kubernetes.io/name: worker-demo
+    app.kubernetes.io/part-of: self-healing-controller
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: worker-demo
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: worker-demo
+    spec:
+      containers:
+        - name: worker
+          image: nginx:1.27
+          ports:
+            - name: http
+              containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker-demo
+  namespace: self-healing-demo
+spec:
+  selector:
+    app.kubernetes.io/name: worker-demo
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+

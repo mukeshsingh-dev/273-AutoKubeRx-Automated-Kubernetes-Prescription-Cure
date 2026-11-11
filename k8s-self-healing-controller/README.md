@@ -1,6 +1,6 @@
 # Kubernetes Self-Healing Service Controller
 
-Phase 2 implementation of a controller that keeps distributed worker workloads healthy and exposes an agent-assisted operations workflow.
+Phase 4 integration-ready implementation of a controller that keeps distributed worker workloads healthy and exposes an agent-assisted operations workflow.
 
 ## Phase 1 foundation
 
@@ -74,6 +74,30 @@ It creates or patches the Deployment and Service, then publishes ready and
 desired replica counts plus an `Available` or `Degraded` condition to the
 custom resource status.
 
+## Phase 3 agent and guardrails
+
+The evidence collector gathers bounded Deployment, pod, event, and log data
+for one workload. Metrics and traces are reported as unavailable until their
+adapters are configured. The diagnosis layer produces an evidence-linked
+recommendation with confidence and uncertainty; `guardrails.authorize` must
+allow the action before any recovery tool is executed.
+
+## Phase 4 integration deployment
+
+Build and load the controller image, then deploy it with namespace-scoped RBAC:
+
+```bash
+docker build -t autokuberx/self-healing-controller:dev .
+kind load docker-image autokuberx/self-healing-controller:dev --name self-healing-demo
+kubectl apply -f deploy/controller-rbac.yaml
+kubectl apply -f deploy/controller-deployment.yaml
+kubectl -n self-healing-demo rollout status deploy/self-healing-controller
+```
+
+The controller exposes `/healthz` and `/readyz`, loads in-cluster credentials
+when deployed, falls back to a local kubeconfig for development, and retries
+temporary API or per-workload failures on the next polling cycle.
+
 Clean up:
 
 ```bash
@@ -92,6 +116,15 @@ kind delete cluster --name self-healing-demo
 - `controller/reconciler.py`: deterministic, testable reconciliation logic.
 - `controller/main.py`: Kubernetes polling entrypoint.
 - `tests/test_reconciler.py`: Phase 2 unit tests.
+- `controller/evidence.py`: bounded operational evidence collection.
+- `controller/agent.py`: evidence-linked diagnosis recommendations.
+- `controller/guardrails.py`: deterministic action authorization.
+- `tests/test_agent.py`: Phase 3 diagnosis and guardrail tests.
+- `Dockerfile`: non-root controller image.
+- `deploy/controller-rbac.yaml`: namespace-scoped controller permissions.
+- `deploy/controller-deployment.yaml`: controller Deployment with probes.
+- `docs/phase-3-status.md`: evidence, agent, and guardrail status.
+- `docs/phase-4-status.md`: integration and hardening status.
 
 Run the Phase 2 tests without a cluster:
 

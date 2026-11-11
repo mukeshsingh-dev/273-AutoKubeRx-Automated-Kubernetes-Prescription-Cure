@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: self-healing-controller
+  namespace: self-healing-demo
+  labels:
+    app.kubernetes.io/name: self-healing-controller
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: self-healing-controller
+  namespace: self-healing-demo
+rules:
+  - apiGroups: ["ops.example.com"]
+    resources: ["selfhealingworkloads"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["ops.example.com"]
+    resources: ["selfhealingworkloads/status"]
+    verbs: ["get", "patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/status"]
+    verbs: ["get", "list", "watch", "create", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch", "create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: self-healing-controller
+  namespace: self-healing-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: self-healing-controller
+subjects:
+  - kind: ServiceAccount
+    name: self-healing-controller
+    namespace: self-healing-demo

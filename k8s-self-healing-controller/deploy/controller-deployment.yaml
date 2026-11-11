@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: self-healing-controller
+  namespace: self-healing-demo
+  labels:
+    app.kubernetes.io/name: self-healing-controller
+    app.kubernetes.io/part-of: self-healing-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: self-healing-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: self-healing-controller
+        app.kubernetes.io/part-of: self-healing-controller
+    spec:
+      serviceAccountName: self-healing-controller
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: controller
+          image: autokuberx/self-healing-controller:dev
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: RECONCILE_INTERVAL_SECONDS
+              value: "5"
+            - name: HEALTH_PORT
+              value: "8080"
+          ports:
+            - name: health
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10

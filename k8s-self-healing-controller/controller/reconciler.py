@@ -43,6 +43,12 @@ def labels_for(workload: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def selector_labels_for(workload: dict[str, Any]) -> dict[str, str]:
+    """Return immutable, minimal selector labels for Deployment and Service."""
+
+    return {APP_LABEL: _name(workload)}
+
+
 def owner_reference(workload: dict[str, Any]) -> dict[str, Any] | None:
     metadata = _metadata(workload)
     uid = metadata.get("uid")
@@ -63,6 +69,7 @@ def build_deployment(workload: dict[str, Any]) -> dict[str, Any]:
 
     spec = _spec(workload)
     labels = labels_for(workload)
+    selector_labels = selector_labels_for(workload)
     owner = owner_reference(workload)
     deployment_metadata: dict[str, Any] = {
         "name": _name(workload),
@@ -97,7 +104,7 @@ def build_deployment(workload: dict[str, Any]) -> dict[str, Any]:
         "metadata": deployment_metadata,
         "spec": {
             "replicas": int(spec["replicas"]),
-            "selector": {"matchLabels": labels},
+            "selector": {"matchLabels": selector_labels},
             "template": {
                 "metadata": {"labels": template_labels},
                 "spec": {"containers": [container]},
@@ -111,6 +118,7 @@ def build_service(workload: dict[str, Any]) -> dict[str, Any]:
 
     spec = _spec(workload)
     labels = labels_for(workload)
+    selector_labels = selector_labels_for(workload)
     owner = owner_reference(workload)
     metadata: dict[str, Any] = {
         "name": _name(workload),
@@ -125,7 +133,7 @@ def build_service(workload: dict[str, Any]) -> dict[str, Any]:
         "kind": "Service",
         "metadata": metadata,
         "spec": {
-            "selector": labels,
+            "selector": selector_labels,
             "ports": [{"name": "http", "port": port, "targetPort": "http"}],
         },
     }
